@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Luxury dark theme — black base, royal gold primary, neon blue secondary */
+    --background: 240 10% 4%;
+    --foreground: 40 30% 96%;
+
+    --card: 240 8% 7%;
+    --card-foreground: 40 30% 96%;
+
+    --primary: 42 60% 52%;         /* royal gold */
+    --primary-foreground: 240 10% 6%;
+
+    --secondary: 193 100% 50%;     /* neon blue */
+    --secondary-foreground: 240 10% 6%;
+
+    --muted: 240 6% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 240 6% 16%;
+    --accent-foreground: 40 30% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 6% 18%;
+    --input: 240 6% 18%;
+    --ring: 42 60% 52%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased font-body;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(220,174,50,0.08), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(26,215,255,0.07), transparent 40%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold tracking-wide;
+  }
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+}
+
+@layer components {
+  /* Glassmorphism card used across the site */
+  .glass-card {
+    @apply relative rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-glass;
+  }
+
+  .glass-card::before {
+    content: '';
+    @apply pointer-events-none absolute inset-0 rounded-2xl bg-glass-gradient;
+  }
+
+  .gold-border-glow {
+    box-shadow: 0 0 0 1px rgba(220,174,50,0.25), 0 0 24px rgba(220,174,50,0.15);
+  }
+
+  .neon-border-glow {
+    box-shadow: 0 0 0 1px rgba(26,215,255,0.25), 0 0 24px rgba(26,215,255,0.15);
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-neon {
+    @apply bg-gradient-to-r from-neon-300 via-neon-400 to-neon-600 bg-clip-text text-transparent;
+  }
+
+  /*
+   * SIGNATURE ELEMENT — "LED Underglow"
+   * A rotating conic-gradient traced along a card's border, styled after
+   * the RGB lighting strips inside gaming PC cases. Used sparingly: the
+   * hero's primary CTA, one featured pricing/membership card, and on
+   * hover for game/station cards — never as ambient background noise.
+   */
+  .led-underglow {
+    position: relative;
+    isolation: isolate;
+  }
+  .led-underglow::before {
+    content: '';
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: conic-gradient(
+      from var(--led-angle, 0deg),
+      #dcae32, #1ad7ff, #b026ff, #dcae32
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: led-spin 4s linear infinite;
+    z-index: -1;
+  }
+  @property --led-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+  @keyframes led-spin {
+    to { --led-angle: 360deg; }
+  }
+
+  .scanline-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(220,174,50,0.6), rgba(26,215,255,0.6), transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .led-underglow::before,
+  .animate-glow,
+  .animate-float {
+    animation: none !important;
+  }
+}
