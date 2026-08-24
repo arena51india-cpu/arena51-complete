@@ -5,6 +5,7 @@ import { calculatePrice, isValidAdvanceAmount, computeBalance, MIN_ADVANCE_AMOUN
 import { assignBestStation, type ExistingBookingWindow } from '@/lib/booking/stationAssignment';
 import type { Membership, PricingRule } from '@/lib/types/database.types';
 import { checkRateLimit, getClientIp } from '@/lib/security/rate-limit';
+import { sendOwnerBookingAlert } from '@/lib/email/resend';
 
 export async function POST(request: NextRequest) {
   const rate = checkRateLimit(`booking:${getClientIp(request)}`, { limit: 10, windowMs: 5 * 60_000 });
@@ -190,8 +191,30 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
 
-  if (insertError || !booking) {
+    if (insertError || !booking) {
     return NextResponse.json({ error: insertError?.message ?? 'Failed to create booking.' }, { status: 500 });
+  }
+
+  // Paid bookings get notified once payment is verified (see the
+  // Razorpay verify route). Unpaid (₹0 advance) bookings never reach
+  // that step, so notify immediately here instead — otherwise they'd
+  // never trigger any alert at all.
+  if (advanceAmount === 0) {
+    try {
+      await sendOwnerBookingAlert({
+        bookingReference: booking.booking_reference,
+        customerName: booking.customer_name,
+        customerPhone: booking.customer_phone,
+        bookingDate: booking.booking_date,
+        startTime: booking.start_time,
+        durationMinutes: booking.duration_minutes,
+        stationName: assignment.station?.station_name ?? 'Not yet assigned',
+        totalAmount: booking.total_amount,
+        advanceAmount: booking.advance_amount,
+      });
+    } catch (err) {
+      console.error('Owner booking alert email failed (unpaid booking):', err);
+    }
   }
 
   return NextResponse.json({

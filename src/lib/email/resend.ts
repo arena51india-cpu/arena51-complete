@@ -53,6 +53,46 @@ export async function sendWalletTopupConfirmation(
   await sendEmail({ to, subject, html, text });
 }
 
+export async function sendOwnerBookingAlert(params: {
+  bookingReference: string;
+  customerName: string;
+  customerPhone: string;
+  bookingDate: string;
+  startTime: string;
+  durationMinutes: number;
+  stationName: string;
+  totalAmount: number;
+  advanceAmount: number;
+}) {
+  const from = process.env.RESEND_FROM_EMAIL;
+  const to = process.env.CONTACT_NOTIFICATION_EMAIL;
+
+  if (!from || !to) {
+    console.warn('RESEND_FROM_EMAIL or CONTACT_NOTIFICATION_EMAIL not set — skipping owner booking alert.');
+    return;
+  }
+
+  const resend = getResendClient();
+  await resend.emails.send({
+    from,
+    to,
+    subject: `New booking: ${params.customerName} — ${params.bookingDate} ${params.startTime.slice(0, 5)}`,
+    text: [
+      `New confirmed booking at Arena 51`,
+      ``,
+      `Reference: ${params.bookingReference}`,
+      `Customer: ${params.customerName}`,
+      `Phone: ${params.customerPhone}`,
+      `Date: ${params.bookingDate}`,
+      `Time: ${params.startTime.slice(0, 5)}`,
+      `Duration: ${params.durationMinutes} min`,
+      `Station: ${params.stationName}`,
+      `Total: ₹${params.totalAmount}`,
+      `Advance paid: ₹${params.advanceAmount}`,
+    ].join('\n'),
+  });
+}
+
 export async function sendContactNotification(params: {
   name: string;
   email: string;

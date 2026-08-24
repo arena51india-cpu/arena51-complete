@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { verifyRazorpayPaymentSchema } from '@/lib/booking/schemas';
 import { verifyRazorpaySignature } from '@/lib/payments/razorpay';
-import { sendBookingConfirmation } from '@/lib/email/resend';
+import { sendBookingConfirmation, sendOwnerBookingAlert } from '@/lib/email/resend';
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -100,21 +100,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+    let stationName = 'Assigned on arrival';
+  try {
+    const { data: station } = await supabase
+      .from('gaming_stations')
+      .select('station_name')
+      .eq('id', booking.assigned_station_id)
+      .single();
+    if (station) stationName = station.station_name;
+  } catch (err) {
+    console.error('Could not look up station name for notifications:', err);
+  }
+
   if (booking.customer_email) {
     try {
-      const { data: station } = await supabase
-        .from('gaming_stations')
-        .select('station_name')
-        .eq('id', booking.assigned_station_id)
-        .single();
-
       await sendBookingConfirmation(booking.customer_email, {
         customerName: booking.customer_name,
         bookingReference: booking.booking_reference,
         bookingDate: booking.booking_date,
         startTime: booking.start_time.slice(0, 5),
         durationMinutes: booking.duration_minutes,
-        stationName: station?.station_name ?? 'Assigned on arrival',
+        stationName,
         totalAmount: booking.total_amount,
         advanceAmount: booking.advance_amount,
         balanceAmount: booking.balance_amount,
@@ -122,6 +128,22 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error('Booking confirmation email failed:', err);
     }
+  }
+
+  try {
+    await sendOwnerBookingAlert({
+      bookingReference: booking.booking_reference,
+      customerName: booking.customer_name,
+      customerPhone: booking.customer_phone,
+      bookingDate: booking.booking_date,
+      startTime: booking.start_time,
+      durationMinutes: booking.duration_minutes,
+      stationName,
+      totalAmount: booking.total_amount,
+      advanceAmount: booking.advance_amount,
+    });
+  } catch (err) {
+    console.error('Owner booking alert email failed:', err);
   }
 
   return NextResponse.json({ booking: updatedBooking });
